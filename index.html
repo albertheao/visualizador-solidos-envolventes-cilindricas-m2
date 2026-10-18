@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador de Sólidos por Envolventes Cilíndricas</title>
+    <!-- Tailwind CSS para el diseño -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Plotly.js para las gráficas 2D y 3D (versión actualizada) -->
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+    <!-- Math.js para parsear las funciones matemáticas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.1/math.js"></script>
+    <!-- MathLive para construir expresiones matemáticas de forma visual -->
+    <script defer src="https://cdn.jsdelivr.net/npm/mathlive@0.111.0"></script>
+    <!-- MathJax para renderizar la integral con formato matemático -->
+    <script>
+        MathJax = {
+          tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+          svg: {
+            fontCache: 'global'
+          }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+    <style>
+        :root {
+            --dma-navy: #12324a;
+            --dma-blue: #0b6380;
+            --dma-gold: #d6a52a;
+            --dma-ice: #edf4f6;
+            --dma-ink: #173042;
+            --dma-strong-blue: #0057b8;
+            --dma-turquoise: #008c95;
+            --dma-orange: #e06b16;
+            --dma-violet: #7357b8;
+            --dma-muted: #526b79;
+            --dma-border: #d7e2e7;
+            --dma-red: #b42318;
+        }
+        body {
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: linear-gradient(180deg, var(--dma-navy) 0 8px, var(--dma-ice) 8px 100%);
+            color: var(--dma-ink);
+        }
+        .plot-container {
+            height: 450px;
+        }
+        body > .container { max-width:1080px !important; padding:22px 18px !important; }
+        .dma-header { text-align:left; }
+        .dma-kicker { color:var(--dma-blue); font-size:.75rem; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }
+        .dma-header h1 { margin-top:.2rem; padding-left:1rem; border-left:5px solid var(--dma-gold); color:var(--dma-navy); font-size:clamp(22px,4vw,32px); line-height:1.2; letter-spacing:-.02em; }
+        .bg-white { border:1px solid #d7e2e7; border-radius:14px !important; box-shadow:0 8px 24px rgba(18,50,74,.07) !important; }
+        #generate-btn { background:var(--dma-turquoise) !important; }
+        #generate-btn:hover { background:var(--dma-navy) !important; }
+        input:focus, select:focus, button:focus-visible, math-field:focus-within { outline:3px solid rgba(214,165,42,.38) !important; outline-offset:2px; }
+        .dma-footer { border-top:1px solid #cbd9df; padding-top:1.25rem; color:#526b79; }
+        .dma-footer strong { color:var(--dma-navy); }
+        .dma-footer a { color:var(--dma-blue); text-decoration:underline; text-underline-offset:3px; }
+        label.text-blue-600 { color:var(--dma-strong-blue) !important; }
+        label.text-red-600 { color:var(--dma-orange) !important; }
+        label.text-orange-600 { color:var(--dma-violet) !important; }
+        #volume-display { color:#8a6508 !important; }
+        .bg-white:has(#volume-display) { border-top:4px solid var(--dma-gold); background:#fffaf0 !important; }
+        .control-help { color:var(--dma-muted); font-size:.76rem; line-height:1.45; }
+        math-field.math-input { display:block; width:100%; min-height:2.75rem; margin-top:.25rem; padding:.48rem .7rem; border:1px solid #d1d5db; border-radius:7px; background:#fff; color:var(--dma-ink); font-size:1.05rem; box-shadow:0 1px 2px rgba(18,50,74,.06); --caret-color:var(--dma-blue); --selection-background-color:rgba(0,140,149,.18); }
+        math-field.math-input::part(menu-toggle), math-field.math-input::part(virtual-keyboard-toggle) { display:none; }
+        math-field.math-input.endpoint-input { min-width:0; text-align:center; }
+        .math-keypad { margin-top:1.1rem; padding:.8rem .9rem; border:1px solid var(--dma-border); border-radius:11px; background:#f8fbfc; }
+        .keypad-heading { display:flex; flex-wrap:wrap; justify-content:space-between; gap:.35rem 1rem; margin-bottom:.6rem; }
+        .keypad-heading strong { color:var(--dma-navy); font-size:.84rem; }
+        #keypad-target { color:var(--dma-muted); font-size:.74rem; }
+        .keypad-buttons { display:flex; flex-wrap:wrap; gap:.4rem; }
+        .math-key { min-width:2.5rem; padding:.42rem .58rem; border:1px solid #c9d8df; border-radius:8px; background:#fff; color:var(--dma-ink); font-size:.82rem; font-weight:700; box-shadow:0 1px 2px rgba(18,50,74,.06); }
+        .math-key:hover { border-color:var(--dma-blue); background:#edf7fa; }
+        .math-key:disabled { opacity:.38; cursor:not-allowed; background:#eef2f4; }
+        .example-button { border:1px solid var(--dma-border); border-radius:9px; background:#f6fafb; color:var(--dma-ink); padding:.45rem .7rem; font-size:.76rem; font-weight:650; }
+        .example-button:hover { border-color:var(--dma-blue); background:#edf7fa; }
+        .reset-button { border-color:#c8a74e; color:#76570a; background:#fffaf0; }
+        .status-box { display:none; margin-top:1rem; padding:.75rem .9rem; border:1px solid #f1b5af; border-radius:9px; background:#fff1f0; color:var(--dma-red); font-size:.85rem; line-height:1.45; }
+        .status-box.show { display:block; }
+        .rotation-control { margin-top:1rem; padding:.85rem 1rem; border:1px solid var(--dma-border); border-radius:12px; background:#f7fafb; }
+        .rotation-control label { display:flex; justify-content:space-between; gap:1rem; color:var(--dma-muted); font-size:.82rem; font-weight:700; }
+        .rotation-control input { width:100%; accent-color:var(--dma-gold); }
+        .visual-options { display:flex; flex-wrap:wrap; align-items:center; gap:.65rem 1.25rem; margin:0 0 1rem; padding:.8rem 1rem; border:1px solid var(--dma-border); border-radius:12px; background:#f7fafb; }
+        .visual-options strong { color:var(--dma-navy); font-size:.84rem; }
+        .visual-option { display:inline-flex; align-items:center; gap:.45rem; color:var(--dma-muted); font-size:.8rem; font-weight:700; cursor:pointer; }
+        .visual-option input { width:1rem; height:1rem; accent-color:var(--dma-gold); }
+        .method-selector { margin-bottom:1.35rem; padding:1rem; border:1px solid var(--dma-border); border-radius:12px; background:#f7fafb; }
+        .method-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.65rem; margin-top:.55rem; }
+        .method-option { position:relative; }
+        .method-option input { position:absolute; opacity:0; pointer-events:none; }
+        .method-option label { display:block; height:100%; padding:.75rem .9rem; border:2px solid var(--dma-border); border-radius:10px; background:#fff; color:var(--dma-ink); cursor:pointer; transition:.15s ease; }
+        .method-option label strong { display:block; color:var(--dma-navy); }
+        .method-option label span { display:block; margin-top:.15rem; color:var(--dma-muted); font-size:.75rem; line-height:1.35; }
+        .method-option input:checked + label { border-color:var(--dma-blue); background:#edf7fa; box-shadow:0 0 0 2px rgba(11,99,128,.12); }
+        .method-option input:focus-visible + label { outline:3px solid rgba(214,165,42,.38); outline-offset:2px; }
+        .axis-controls { display:flex; align-items:center; gap:.55rem; margin-top:.25rem; }
+        .axis-controls select { flex:1 1 auto; min-width:0; margin-top:0 !important; }
+        .axis-value { flex:0 0 auto; display:flex; align-items:center; gap:.35rem; }
+        .axis-value.hidden { display:none; }
+        .axis-value label { color:var(--dma-ink); font-size:.85rem; font-weight:700; white-space:nowrap; }
+        .axis-value input { width:5.25rem; padding:.48rem .55rem; border:1px solid #d1d5db; border-radius:7px; background:#fff; color:var(--dma-ink); box-shadow:0 1px 2px rgba(18,50,74,.06); }
+        .legend-row { display:flex; flex-wrap:wrap; justify-content:center; gap:1rem; margin:.35rem 0 0; color:var(--dma-muted); font-size:.72rem; }
+        .legend-row span { display:inline-flex; align-items:center; gap:.35rem; }
+        .legend-row span.hidden { display:none; }
+        .legend-dot { width:.7rem; height:.7rem; border-radius:3px; }
+        .legend-f { background:var(--dma-strong-blue); }.legend-g { background:var(--dma-orange); }.legend-region { background:var(--dma-turquoise); }.legend-axis { background:var(--dma-violet); }.legend-section { background:var(--dma-gold); }.legend-radius { background:var(--dma-navy); }.legend-radius-r { background:var(--dma-turquoise); }
+        mjx-container[jax="SVG"]:not([display="true"]){display:inline-block !important;margin:0 .08em !important}
+        mjx-container[jax="SVG"]:not([display="true"]) svg{display:inline !important;vertical-align:middle}
+        @media (max-width:640px) { .plot-container { height:380px; } body > .container{padding:22px 12px !important}.dma-header{margin-bottom:1.25rem !important}.method-options{grid-template-columns:1fr} }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="dma-header mb-8">
+            <p class="dma-kicker">Universidad Galileo · Departamento de Matemática Aplicada</p>
+            <h1 class="text-4xl font-bold text-gray-900">Sólidos de revolución: envolventes cilíndricas</h1>
+            <p class="text-base text-gray-600 mt-2 max-w-3xl">Define una región plana, selecciona el eje de rotación y observa cómo un rectángulo paralelo al eje genera una envolvente cilíndrica. El volumen se aproxima mediante \(V=2\pi\int_a^b \rho(t)h(t)\,dt\), donde \(\rho(t)\) es el radio promedio y \(h(t)\) es la altura.</p>
+        </header>
+
+        <!-- Panel de Controles -->
+        <div class="bg-white p-6 rounded-2xl shadow-lg mb-8">
+            <h2 class="text-2xl font-semibold mb-4 border-b pb-2">Controles</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                <!-- Función Externa -->
+                <div>
+                    <label id="f-label" for="f_x" class="block text-sm font-semibold text-blue-600">Frontera y = f(x)</label>
+                    <math-field id="f_x" class="math-input" aria-label="Frontera y = f(x)" math-virtual-keyboard-policy="manual" placeholder="y = f(x)"></math-field>
+                </div>
+                <!-- Función Interna -->
+                <div id="second-function-container">
+                    <label id="g-label" for="g_x" class="block text-sm font-semibold text-red-600">Frontera y = g(x)</label>
+                    <math-field id="g_x" class="math-input" aria-label="Frontera y = g(x)" math-virtual-keyboard-policy="manual" placeholder="y = g(x)" value="0"></math-field>
+                </div>
+                <!-- Límites de Integración -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="a" class="block text-sm font-medium text-gray-700">\(a\)</label>
+                        <math-field id="a" class="math-input endpoint-input" aria-label="Extremo a" math-virtual-keyboard-policy="manual" placeholder="a"></math-field>
+                    </div>
+                    <div>
+                        <label for="b" class="block text-sm font-medium text-gray-700">\(b\)</label>
+                        <math-field id="b" class="math-input endpoint-input" aria-label="Extremo b" math-virtual-keyboard-policy="manual" placeholder="b"></math-field>
+                    </div>
+                </div>
+                <!-- Eje de Rotación -->
+                <div class="md:col-span-2 lg:col-span-2">
+                    <label for="axis" class="block text-sm font-semibold text-orange-600">Eje de rotación</label>
+                    <div class="axis-controls">
+                        <select id="axis" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                            <option value="y" selected>Eje y (x = 0)</option>
+                            <option value="x=h">Recta vertical (x = h)</option>
+                            <option value="x">Eje x (y = 0)</option>
+                            <option value="y=k">Recta horizontal (y = k)</option>
+                        </select>
+                        <div id="k-input-container" class="axis-value hidden">
+                            <label for="k_val">k =</label>
+                            <input type="number" id="k_val" value="-1" aria-label="Valor de k">
+                        </div>
+                        <div id="h-input-container" class="axis-value hidden">
+                            <label for="h_val">h =</label>
+                            <input type="number" id="h_val" value="-1" aria-label="Valor de h">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="math-keypad" aria-label="Teclado matemático">
+                <div class="keypad-heading"><strong>Teclado matemático</strong><span id="keypad-target">Insertando en: Frontera y = f(x)</span></div>
+                <div class="keypad-buttons">
+                    <button type="button" class="math-key" data-template="\sqrt{#0}">\(\sqrt{\Box}\)</button>
+                    <button type="button" class="math-key" data-template="\sqrt[#?]{#@}">\(\sqrt[n]{\Box}\)</button>
+                    <button type="button" class="math-key" data-template="\frac{#@}{#?}">\(\frac{\Box}{\Box}\)</button>
+                    <button type="button" class="math-key" data-template="#@^{#?}">\(x^n\)</button>
+                    <button type="button" class="math-key" data-template="\sin\left(#0\right)">\(\sin\)</button>
+                    <button type="button" class="math-key" data-template="\cos\left(#0\right)">\(\cos\)</button>
+                    <button type="button" class="math-key" data-template="\tan\left(#0\right)">\(\tan\)</button>
+                    <button type="button" class="math-key" data-template="\ln\left(#0\right)">\(\ln\)</button>
+                    <button type="button" class="math-key" data-template="e^{#0}">\(e^x\)</button>
+                    <button type="button" class="math-key" data-template="\left|#0\right|">\(|x|\)</button>
+                    <button type="button" class="math-key" data-template="\pi">\(\pi\)</button>
+                    <button type="button" class="math-key" data-template="e">\(e\)</button>
+                    <button type="button" class="math-key variable-key" data-template="x">\(x\)</button>
+                    <button type="button" class="math-key variable-key" data-template="y">\(y\)</button>
+                    <button type="button" class="math-key equation-key" data-template="=">=</button>
+                    <button type="button" class="math-key" data-template="(">(</button>
+                    <button type="button" class="math-key" data-template=")">)</button>
+                    <button type="button" class="math-key" data-template="+">+</button>
+                    <button type="button" class="math-key" data-template="-">−</button>
+                    <button type="button" class="math-key" data-template="\cdot">×</button>
+                    <button type="button" class="math-key" data-template="\div">÷</button>
+                </div>
+                <p class="control-help mt-2">Selecciona primero el campo que deseas editar. Cada expresión se construye directamente con notación matemática.</p>
+            </div>
+            <p id="vertical-rotation-help" class="text-sm text-amber-700 bg-amber-100 p-3 rounded-md mt-4"></p>
+            <div class="mt-4 flex justify-end">
+                <button type="button" id="reset-btn" class="example-button reset-button">Restablecer</button>
+            </div>
+            <div id="input-error" class="status-box" role="alert" aria-live="assertive"></div>
+             <!-- Botón de Generación -->
+             <div class="mt-6 pt-6 border-t border-gray-200">
+                <button id="generate-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-all duration-200 ease-in-out transform hover:scale-105 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span id="generate-btn-text">Visualizar sólido</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Visualizaciones (Ocultas por defecto) -->
+        <div id="visuals-and-results-container" class="hidden">
+            <div class="visual-options" aria-label="Opciones de la visualización">
+                <strong>Elementos didácticos</strong>
+                <label class="visual-option" for="show-section"><input id="show-section" type="checkbox"> Mostrar envolvente y rectángulo</label>
+                <label class="visual-option" for="show-radii"><input id="show-radii" type="checkbox"> Mostrar radio promedio y altura</label>
+                <span class="control-help">El rectángulo se muestra en el punto medio; la envolvente 3D se forma al aumentar el ángulo de giro.</span>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div class="bg-white p-4 rounded-2xl shadow-lg">
+                    <h3 class="text-xl font-semibold text-center mb-2">Región Plana (2D)</h3>
+                    <div id="plot2d" class="plot-container"></div>
+                    <div class="legend-row" aria-label="Leyenda"><span><i class="legend-dot legend-f"></i><span id="legend-f-text">Frontera y = f(x)</span></span><span id="second-legend-item"><i class="legend-dot legend-g"></i><span id="legend-g-text">Frontera y = g(x)</span></span><span><i class="legend-dot legend-region"></i>Región</span><span><i class="legend-dot legend-axis"></i>Eje de rotación</span><span id="section-legend-item" class="hidden"><i class="legend-dot legend-section"></i>Envolvente</span><span id="radius-legend-item" class="hidden"><i class="legend-dot legend-radius"></i>Radio promedio \(\rho\)</span><span id="radius-r-legend-item" class="hidden"><i class="legend-dot legend-radius-r"></i>Altura \(h\)</span></div>
+                </div>
+                <div class="bg-white p-4 rounded-2xl shadow-lg">
+                    <h3 class="text-xl font-semibold text-center mb-2">Sólido de Revolución (3D)</h3>
+                    <div id="plot3d" class="plot-container"></div>
+                    <div class="rotation-control">
+                        <label for="rotation-angle"><span>Ángulo de giro</span><strong><span id="rotation-value">0</span>°</strong></label>
+                        <input id="rotation-angle" type="range" min="0" max="360" step="5" value="0">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Resultados (Ocultos por defecto) -->
+            <div class="bg-white p-6 rounded-2xl shadow-lg">
+                <h2 class="text-2xl font-semibold mb-4">Resultados del Cálculo</h2>
+                <div class="flex flex-col md:flex-row items-center justify-around text-center">
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-600">Fórmula general</h3>
+                        <div id="integral-display" class="text-2xl mt-2 p-4"></div>
+                    </div>
+                    <div class="mt-6 md:mt-0">
+                        <h3 class="text-lg font-medium text-gray-600">Volumen aproximado</h3>
+                        <p id="volume-display" class="text-4xl font-bold text-indigo-600 mt-2">--</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <footer class="dma-footer text-center mt-12">
+            <p><strong>Departamento de Matemática Aplicada</strong> · Universidad Galileo</p>
+            <p class="mt-1">Applet educativo desarrollado con apoyo de IA · <a href="mailto:alberth@galileo.edu">alberth@galileo.edu</a></p>
+        </footer>
+
+    </div>
+
+    <script>
+        const fInput=document.getElementById('f_x');
+        const gInput=document.getElementById('g_x');
+        const aInput=document.getElementById('a');
+        const bInput=document.getElementById('b');
+        const axisSelect=document.getElementById('axis');
+        const kContainer=document.getElementById('k-input-container');
+        const hContainer=document.getElementById('h-input-container');
+        const kInput=document.getElementById('k_val');
+        const hInput=document.getElementById('h_val');
+        const helpText=document.getElementById('vertical-rotation-help');
+        const fLabel=document.getElementById('f-label');
+        const gLabel=document.getElementById('g-label');
+        const legendFText=document.getElementById('legend-f-text');
+        const legendGText=document.getElementById('legend-g-text');
+        const keypadTarget=document.getElementById('keypad-target');
+        const generateButton=document.getElementById('generate-btn');
+        const generateButtonText=document.getElementById('generate-btn-text');
+        const resetButton=document.getElementById('reset-btn');
+        const visuals=document.getElementById('visuals-and-results-container');
+        const plot2d=document.getElementById('plot2d');
+        const plot3d=document.getElementById('plot3d');
+        const formulaDisplay=document.getElementById('integral-display');
+        const volumeDisplay=document.getElementById('volume-display');
+        const errorBox=document.getElementById('input-error');
+        const rotationAngle=document.getElementById('rotation-angle');
+        const rotationValue=document.getElementById('rotation-value');
+        const showShell=document.getElementById('show-section');
+        const showDimensions=document.getElementById('show-radii');
+        const shellLegend=document.getElementById('section-legend-item');
+        const radiusLegend=document.getElementById('radius-legend-item');
+        const heightLegend=document.getElementById('radius-r-legend-item');
+        let activeMathInput=fInput;
+        let editorReady=false;
+        let currentModel=null;
+        let rotationFrame=null;
+        const allowedSymbols=new Set(['x','y','pi','e','sin','cos','tan','asin','acos','atan','sinh','cosh','tanh','sqrt','nthRoot','abs','exp','log','ln','min','max']);
+
+        function parseSafeExpression(source){
+            const raw=source.trim();
+            if(!raw)throw new Error('Escribe las dos fronteras de la región.');
+            if(/\b(sen|seno|tg|raiz|raíz|logaritmo)\b/i.test(raw))throw new Error('Usa los botones del teclado matemático para insertar funciones y raíces.');
+            if(!/^[0-9A-Za-z_+\-*/^().,\s]+$/.test(raw))throw new Error('La expresión contiene un símbolo no permitido.');
+            const tree=math.parse(raw);
+            tree.traverse(node=>{
+                if(node.isAssignmentNode||node.isFunctionAssignmentNode||node.isAccessorNode||node.isBlockNode||node.isObjectNode)throw new Error('La expresión contiene una construcción no permitida.');
+                if(node.isSymbolNode&&!allowedSymbols.has(node.name))throw new Error(`No se reconoce “${node.name}”. Usa x o y y funciones con nombres en inglés.`);
+                if(node.isFunctionNode&&node.fn?.name&&!allowedSymbols.has(node.fn.name))throw new Error(`La función “${node.fn.name}” no está permitida.`);
+            });
+            return tree;
+        }
+        function convertAsciiRoots(source){
+            function groupAt(text,open){let depth=0;if(text[open]!=='(')return null;for(let i=open;i<text.length;i++){if(text[i]==='(')depth++;if(text[i]===')'&&--depth===0)return{content:text.slice(open+1,i),end:i+1};}return null;}
+            let result='',cursor=0;
+            while(cursor<source.length){const rootIndex=source.indexOf('root(',cursor);if(rootIndex<0){result+=source.slice(cursor);break;}result+=source.slice(cursor,rootIndex);const indexGroup=groupAt(source,rootIndex+4);if(!indexGroup){result+='root';cursor=rootIndex+4;continue;}let start=indexGroup.end;while(/\s/.test(source[start]||''))start++;const radicand=groupAt(source,start);if(!radicand){result+=source.slice(rootIndex,indexGroup.end);cursor=indexGroup.end;continue;}result+=`nthRoot(${convertAsciiRoots(radicand.content)},${convertAsciiRoots(indexGroup.content)})`;cursor=radicand.end;}
+            return result;
+        }
+        function normalizeMath(source){
+            let raw=source.trim().replace(/[\u00d7⋅·]/g,'*').replace(/÷/g,'/').replace(/π/g,'pi').replace(/\u2061/g,' ');
+            raw=raw.replace(/\bln\b/gi,'log');
+            raw=raw.replace(/\b(sin|cos|tan|asin|acos|atan|sinh|cosh|tanh|sqrt|abs|exp|log)\s+([xy])\b/gi,(_,fn,arg)=>`${fn.toLowerCase()}(${arg})`);
+            raw=convertAsciiRoots(raw);
+            const equation=raw.match(/^\s*[xy]\s*=\s*(.+)$/i);
+            return equation?equation[1].trim():raw;
+        }
+        function fieldExpression(input){
+            if(!editorReady||typeof input.getValue!=='function')throw new Error('El editor matemático todavía se está cargando.');
+            return normalizeMath(input.getValue('ascii-math'));
+        }
+        function numericExpression(source){
+            const raw=source.trim().replace(/π/g,'pi');
+            if(!raw)throw new Error('Escribe ambos extremos del intervalo.');
+            if(!/^[0-9A-Za-z_+\-*/^().,\s]+$/.test(raw))throw new Error('Usa números, pi y operaciones aritméticas.');
+            const tree=math.parse(raw),functions=['sqrt','nthRoot','abs','exp','log','ln','sin','cos','tan'];
+            tree.traverse(node=>{if(node.isSymbolNode&&![...functions,'pi','e'].includes(node.name))throw new Error(`No se reconoce “${node.name}” en un extremo.`);if(node.isFunctionNode&&node.fn?.name&&!functions.includes(node.fn.name))throw new Error('Función no permitida en un extremo.');});
+            const value=Number(tree.evaluate());if(!Number.isFinite(value))throw new Error('El extremo debe ser un número real finito.');return value;
+        }
+        function clearPlot(container){if(typeof Plotly!=='undefined'){try{Plotly.purge(container);}catch(error){console.warn(error);}}container.replaceChildren();}
+        function range(a,b,steps){return Array.from({length:steps+1},(_,i)=>i===steps?b:a+(b-a)*i/steps);}
+        function verticalAxis(axis){return axis==='y'||axis==='x=h';}
+        function axisValue(axis,k,h){return verticalAxis(axis)?h:k;}
+        function evaluate(compiled,scope){try{const value=Number(compiled.evaluate(scope));return Number.isFinite(value)?value:null;}catch{return null;}}
+
+        function updateAxisUI(){
+            const axis=axisSelect.value,vertical=verticalAxis(axis);
+            kContainer.classList.toggle('hidden',axis!=='y=k');hContainer.classList.toggle('hidden',axis!=='x=h');
+            const first=vertical?'Frontera y = f(x)':'Frontera x = f(y)',second=vertical?'Frontera y = g(x)':'Frontera x = g(y)';
+            fLabel.textContent=first;gLabel.textContent=second;fInput.setAttribute('aria-label',first);gInput.setAttribute('aria-label',second);
+            legendFText.textContent=first;legendGText.textContent=second;
+            fInput.setAttribute('placeholder',vertical?'y = f(x)':'x = f(y)');gInput.setAttribute('placeholder',vertical?'y = g(x)':'x = g(y)');
+            helpText.innerHTML=vertical
+                ? '<strong>Envolventes verticales:</strong> ingresa las fronteras como \\(y=f(x)\\). El rectángulo es paralelo al eje y los extremos \\(a,b\\) pertenecen al eje \\(x\\).'
+                : '<strong>Envolventes horizontales:</strong> ingresa las fronteras como \\(x=f(y)\\). El rectángulo es paralelo al eje y los extremos \\(a,b\\) pertenecen al eje \\(y\\).';
+            globalThis.MathJax?.typesetPromise?.([helpText]).catch(console.error);
+            setActiveInput(activeMathInput);
+        }
+        function inputName(input){if(input===fInput)return fLabel.textContent;if(input===gInput)return gLabel.textContent;return input===aInput?'Extremo a':'Extremo b';}
+        function setActiveInput(input){activeMathInput=input;keypadTarget.textContent=`Insertando en: ${inputName(input)}`;const endpoint=input===aInput||input===bInput;document.querySelectorAll('.variable-key,.equation-key').forEach(button=>button.disabled=endpoint);}
+        function insertTemplate(template){if(!editorReady||typeof activeMathInput.insert!=='function'){showError('El editor matemático todavía se está cargando.');return;}activeMathInput.insert(template,{focus:true,selectionMode:'placeholder'});}
+        function shellGeometry(model,t){
+            const scope=model.vertical?{x:t}:{y:t};
+            const first=evaluate(model.f,scope),second=evaluate(model.g,scope);
+            return {t,first,second,bottom:Math.min(first,second),top:Math.max(first,second),radius:Math.abs(t-model.axisValue),height:Math.abs(first-second)};
+        }
+        function showError(message){errorBox.innerHTML=message;errorBox.classList.add('show');clearPlot(plot2d);clearPlot(plot3d);plot2d.innerHTML=`<div class="w-full h-full flex items-center justify-center text-red-600 p-4 text-center">${message}</div>`;formulaDisplay.textContent='';volumeDisplay.textContent='--';generateButton.disabled=false;generateButtonText.textContent='Visualizar sólido';}
+
+        function validateModel(model){
+            if(!(model.a<model.b))throw new Error('Los extremos deben cumplir a < b.');
+            if(!Number.isFinite(model.axisValue))throw new Error('El valor del eje de rotación debe ser un número.');
+            if(model.axisValue>model.a+1e-10&&model.axisValue<model.b-1e-10)throw new Error('El eje de rotación atraviesa el interior del intervalo y produciría envolventes superpuestas. Divide la región o elige un intervalo situado a un solo lado del eje.');
+            for(let i=0;i<=300;i++){
+                const t=model.a+(model.b-model.a)*i/300,geometry=shellGeometry(model,t);
+                if(geometry.first===null||geometry.second===null)throw new Error(`La región no está definida con valores reales en todo el intervalo; revisa cerca de ${t.toFixed(4)}.`);
+            }
+        }
+
+        function draw2D(model){
+            const values=range(model.a,model.b,220),first=values.map(t=>shellGeometry(model,t).first),second=values.map(t=>shellGeometry(model,t).second),traces=[];
+            if(model.vertical){
+                traces.push({x:values,y:first,mode:'lines',line:{color:'#0057b8',width:3},name:'Frontera y=f(x)'});
+                traces.push({x:values,y:second,mode:'lines',line:{color:'#e06b16',width:3},name:'Frontera y=g(x)'});
+                traces.push({x:values.concat(values.slice().reverse()),y:first.concat(second.slice().reverse()),fill:'toself',fillcolor:'rgba(0,140,149,.20)',line:{color:'transparent'},hoverinfo:'skip',showlegend:false});
+                const all=first.concat(second),pad=Math.max((Math.max(...all)-Math.min(...all))*.12,.5);
+                traces.push({x:[model.axisValue,model.axisValue],y:[Math.min(...all)-pad,Math.max(...all)+pad],mode:'lines',line:{color:'#7357b8',width:3,dash:'dash'},name:'Eje de rotación'});
+            }else{
+                traces.push({x:first,y:values,mode:'lines',line:{color:'#0057b8',width:3},name:'Frontera x=f(y)'});
+                traces.push({x:second,y:values,mode:'lines',line:{color:'#e06b16',width:3},name:'Frontera x=g(y)'});
+                traces.push({x:first.concat(second.slice().reverse()),y:values.concat(values.slice().reverse()),fill:'toself',fillcolor:'rgba(0,140,149,.20)',line:{color:'transparent'},hoverinfo:'skip',showlegend:false});
+                const all=first.concat(second),pad=Math.max((Math.max(...all)-Math.min(...all))*.12,.5);
+                traces.push({x:[Math.min(...all)-pad,Math.max(...all)+pad],y:[model.axisValue,model.axisValue],mode:'lines',line:{color:'#7357b8',width:3,dash:'dash'},name:'Eje de rotación'});
+            }
+            const mid=(model.a+model.b)/2,g=shellGeometry(model,mid),thickness=Math.max((model.b-model.a)*.018,.008);
+            if(showShell.checked){
+                if(model.vertical)traces.push({x:[mid-thickness,mid+thickness,mid+thickness,mid-thickness,mid-thickness],y:[g.bottom,g.bottom,g.top,g.top,g.bottom],fill:'toself',fillcolor:'rgba(214,165,42,.72)',line:{color:'#8a6508',width:2},name:'Rectángulo generador'});
+                else traces.push({x:[g.bottom,g.top,g.top,g.bottom,g.bottom],y:[mid-thickness,mid-thickness,mid+thickness,mid+thickness,mid-thickness],fill:'toself',fillcolor:'rgba(214,165,42,.72)',line:{color:'#8a6508',width:2},name:'Rectángulo generador'});
+            }
+            if(showDimensions.checked){
+                if(model.vertical){traces.push({x:[model.axisValue,mid],y:[g.bottom,g.bottom],mode:'lines+text',text:['','ρ'],textposition:'bottom center',line:{color:'#12324a',width:5},name:'Radio promedio ρ'});traces.push({x:[mid,mid],y:[g.bottom,g.top],mode:'lines+text',text:['','h'],textposition:'middle right',line:{color:'#008c95',width:5},name:'Altura h'});}
+                else{traces.push({x:[g.bottom,g.bottom],y:[model.axisValue,mid],mode:'lines+text',text:['','ρ'],textposition:'middle left',line:{color:'#12324a',width:5},name:'Radio promedio ρ'});traces.push({x:[g.bottom,g.top],y:[mid,mid],mode:'lines+text',text:['','h'],textposition:'top center',line:{color:'#008c95',width:5},name:'Altura h'});}
+            }
+            const axisStyle={showline:true,linecolor:'#111',linewidth:2,gridcolor:'#d7e2e7',gridwidth:1,zerolinecolor:'#111',zerolinewidth:2,ticks:'outside'};
+            Plotly.react(plot2d,traces,{showlegend:false,margin:{t:20,r:25,b:48,l:52},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'#fbfdfe',xaxis:{...axisStyle,title:'x'},yaxis:{...axisStyle,title:'y',scaleanchor:'x',scaleratio:1}},{responsive:true,displaylogo:false,modeBarButtonsToRemove:['lasso2d','select2d']});
+        }
+
+        function pointOnRotation(model,t,value,theta){
+            if(model.vertical)return{x:model.axisValue+(t-model.axisValue)*Math.cos(theta),y:value,z:(t-model.axisValue)*Math.sin(theta)};
+            return{x:value,y:model.axisValue+(t-model.axisValue)*Math.cos(theta),z:(t-model.axisValue)*Math.sin(theta)};
+        }
+        function surfaceFor(model,which,angle){
+            const ts=range(model.a,model.b,64),thetas=angle>0?range(0,angle,64):[0],x=[],y=[],z=[];
+            ts.forEach(t=>{const g=shellGeometry(model,t),value=which==='first'?g.first:g.second,points=thetas.map(theta=>pointOnRotation(model,t,value,theta));x.push(points.map(p=>p.x));y.push(points.map(p=>p.y));z.push(points.map(p=>p.z));});
+            return{type:'surface',x,y,z,colorscale:which==='first'?[[0,'#dbeafe'],[1,'#0057b8']]:[[0,'#ffedd5'],[1,'#e06b16']],opacity:(showShell.checked||showDimensions.checked)?.48:.88,showscale:false,hoverinfo:'skip'};
+        }
+        function planarRegion(model){
+            const ts=range(model.a,model.b,64),x=[],y=[],z=[];
+            ts.forEach(t=>{const g=shellGeometry(model,t);if(model.vertical){x.push([t,t]);y.push([g.first,g.second]);}else{x.push([g.first,g.second]);y.push([t,t]);}z.push([0,0]);});
+            return{type:'surface',x,y,z,colorscale:[[0,'#bfe3e4'],[1,'#bfe3e4']],opacity:.58,showscale:false,hoverinfo:'skip'};
+        }
+        function profile(model,which,color,name){const ts=range(model.a,model.b,64),vals=ts.map(t=>shellGeometry(model,t)[which]);return model.vertical?{type:'scatter3d',mode:'lines',x:ts,y:vals,z:ts.map(()=>0),line:{color,width:5},name,hoverinfo:'skip'}:{type:'scatter3d',mode:'lines',x:vals,y:ts,z:ts.map(()=>0),line:{color,width:5},name,hoverinfo:'skip'};}
+        function representativeShell(model,angle){
+            if(angle<=0)return[];
+            const mid=(model.a+model.b)/2,half=Math.max((model.b-model.a)*.025,.008),t1=mid-half,t2=mid+half,g=shellGeometry(model,mid),thetas=range(0,angle,64),gold=[[0,'#fff2b8'],[.55,'#d6a52a'],[1,'#8a6508']],traces=[];
+            function wall(t){const rows=[g.bottom,g.top].map(value=>thetas.map(theta=>pointOnRotation(model,t,value,theta)));return{type:'surface',x:rows.map(row=>row.map(p=>p.x)),y:rows.map(row=>row.map(p=>p.y)),z:rows.map(row=>row.map(p=>p.z)),colorscale:gold,opacity:.96,showscale:false,hoverinfo:'skip'};}
+            function cap(value){const rows=[t1,t2].map(t=>thetas.map(theta=>pointOnRotation(model,t,value,theta)));return{type:'surface',x:rows.map(row=>row.map(p=>p.x)),y:rows.map(row=>row.map(p=>p.y)),z:rows.map(row=>row.map(p=>p.z)),colorscale:gold,opacity:.96,showscale:false,hoverinfo:'skip'};}
+            traces.push(wall(t1),wall(t2),cap(g.bottom),cap(g.top));return traces;
+        }
+        function dimensionTraces(model,angle){
+            if(!showDimensions.checked)return[];const mid=(model.a+model.b)/2,g=shellGeometry(model,mid),theta=angle>0?angle*.55:0,center=pointOnRotation(model,model.axisValue,g.bottom,theta),radial=pointOnRotation(model,mid,g.bottom,theta),top=pointOnRotation(model,mid,g.top,theta);
+            return[{type:'scatter3d',mode:'lines+markers+text',x:[center.x,radial.x],y:[center.y,radial.y],z:[center.z,radial.z],text:['','ρ'],textposition:'top center',line:{color:'#12324a',width:10},marker:{size:[4,7],color:'#12324a'},hoverinfo:'name',name:'Radio promedio ρ'},{type:'scatter3d',mode:'lines+markers+text',x:[radial.x,top.x],y:[radial.y,top.y],z:[radial.z,top.z],text:['','h'],textposition:'top center',line:{color:'#008c95',width:9},marker:{size:[4,7],color:'#008c95'},hoverinfo:'name',name:'Altura h'}];
+        }
+        function draw3D(model,degrees){
+            const angle=degrees*Math.PI/180,data=[planarRegion(model)];if(degrees>0)data.push(surfaceFor(model,'first',angle),surfaceFor(model,'second',angle));if(showShell.checked)data.push(...representativeShell(model,angle));data.push(...dimensionTraces(model,angle),profile(model,'first','#0057b8',fLabel.textContent),profile(model,'second','#e06b16',gLabel.textContent));
+            const vals=range(model.a,model.b,80).flatMap(t=>{const g=shellGeometry(model,t);return[g.first,g.second];}),low=Math.min(...vals),high=Math.max(...vals),axisTrace={type:'scatter3d',mode:'lines',line:{color:'#7357b8',width:6},hoverinfo:'skip',name:'Eje de rotación'};
+            if(model.vertical){axisTrace.x=[model.axisValue,model.axisValue];axisTrace.y=[low,high];axisTrace.z=[0,0];}else{axisTrace.x=[low,high];axisTrace.y=[model.axisValue,model.axisValue];axisTrace.z=[0,0];}data.push(axisTrace);
+            Plotly.react(plot3d,data,{showlegend:false,paper_bgcolor:'rgba(0,0,0,0)',margin:{t:0,r:0,b:0,l:0},scene:{aspectmode:'data',bgcolor:'#fbfdfe',camera:{eye:degrees===0?{x:0,y:0,z:2.5}:{x:1.35,y:1.35,z:1.55},up:{x:0,y:1,z:0},projection:{type:'orthographic'}},xaxis:{title:{text:'x'}},yaxis:{title:{text:'y'}},zaxis:{title:{text:'z'}}}},{responsive:true,displaylogo:false});
+        }
+        function calculate(model){let volume=0,n=2400,dt=(model.b-model.a)/n;for(let i=0;i<n;i++){const g=shellGeometry(model,model.a+(i+.5)*dt);volume+=2*Math.PI*g.radius*Math.max(0,g.height)*dt;}if(!Number.isFinite(volume))throw new Error('No fue posible calcular el volumen en el intervalo.');const variable=model.vertical?'x':'y';formulaDisplay.innerHTML=`\\(V=2\\pi\\int_a^b \\rho(${variable})h(${variable})\\,d${variable}\\)`;volumeDisplay.textContent=(Math.abs(volume)<1e-12?0:volume).toFixed(4)+' u³';globalThis.MathJax?.typesetPromise?.([formulaDisplay]).catch(console.error);}
+        function redraw(){if(!currentModel)return;shellLegend.classList.toggle('hidden',!showShell.checked);radiusLegend.classList.toggle('hidden',!showDimensions.checked);heightLegend.classList.toggle('hidden',!showDimensions.checked);draw2D(currentModel);draw3D(currentModel,+rotationAngle.value);}
+
+        function generate(){
+            errorBox.classList.remove('show');errorBox.textContent='';if(!editorReady){showError('El editor matemático todavía se está cargando.');return;}generateButton.disabled=true;generateButtonText.textContent='Generando...';if(rotationFrame)cancelAnimationFrame(rotationFrame);currentModel=null;clearPlot(plot2d);clearPlot(plot3d);visuals.classList.remove('hidden');
+            setTimeout(()=>{try{const axis=axisSelect.value,vertical=verticalAxis(axis),a=numericExpression(fieldExpression(aInput)),b=numericExpression(fieldExpression(bInput)),k=axis==='y=k'?Number(kInput.value):0,h=axis==='x=h'?Number(hInput.value):0;const model={f:parseSafeExpression(fieldExpression(fInput)).compile(),g:parseSafeExpression(fieldExpression(gInput)).compile(),a,b,axis,k,h,vertical,axisValue:axisValue(axis,k,h)};validateModel(model);currentModel=model;rotationAngle.value='0';rotationValue.textContent='0';draw2D(model);draw3D(model,0);calculate(model);shellLegend.classList.toggle('hidden',!showShell.checked);radiusLegend.classList.toggle('hidden',!showDimensions.checked);heightLegend.classList.toggle('hidden',!showDimensions.checked);generateButton.disabled=false;generateButtonText.textContent='Actualizar visualización';}catch(error){showError(error.message||'La expresión no pudo interpretarse. Revisa que todas las casillas estén completas.');}},50);
+        }
+
+        axisSelect.addEventListener('change',updateAxisUI);generateButton.addEventListener('click',generate);[showShell,showDimensions].forEach(input=>input.addEventListener('change',redraw));rotationAngle.addEventListener('input',()=>{rotationValue.textContent=rotationAngle.value;if(!currentModel)return;if(rotationFrame)cancelAnimationFrame(rotationFrame);rotationFrame=requestAnimationFrame(()=>{draw3D(currentModel,+rotationAngle.value);rotationFrame=null;});});
+        [fInput,gInput,aInput,bInput].forEach(input=>input.addEventListener('focusin',()=>setActiveInput(input)));document.querySelectorAll('.math-key').forEach(button=>button.addEventListener('click',()=>{if(!button.disabled)insertTemplate(button.dataset.template);}));[fInput,gInput,aInput,bInput,kInput,hInput].forEach(input=>input.addEventListener('keydown',event=>{if(event.key==='Enter')generate();}));
+        resetButton.addEventListener('click',()=>{[fInput,aInput,bInput].forEach(input=>input.setValue(''));gInput.setValue('0');axisSelect.value='y';kInput.value='-1';hInput.value='-1';showShell.checked=false;showDimensions.checked=false;currentModel=null;errorBox.classList.remove('show');visuals.classList.add('hidden');generateButtonText.textContent='Visualizar sólido';updateAxisUI();setActiveInput(fInput);});
+        updateAxisUI();setActiveInput(fInput);generateButton.disabled=true;generateButtonText.textContent='Cargando editor matemático...';customElements.whenDefined('math-field').then(()=>{editorReady=true;[fInput,gInput,aInput,bInput].forEach(input=>{input.smartFence=true;input.smartMode=false;});generateButton.disabled=false;generateButtonText.textContent='Visualizar sólido';});setTimeout(()=>{if(!editorReady){showError('No fue posible cargar el editor matemático. Comprueba la conexión a Internet y vuelve a cargar la página.');generateButton.disabled=true;generateButtonText.textContent='Editor no disponible';}},10000);
+    </script>
+</body>
+</html>
