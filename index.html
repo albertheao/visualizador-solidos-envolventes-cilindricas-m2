@@ -375,17 +375,28 @@
 
         function draw2D(model){
             const values=range(model.a,model.b,220),first=values.map(t=>shellGeometry(model,t).first),second=values.map(t=>shellGeometry(model,t).second),traces=[];
+            // Las fronteras se prolongan fuera de [a,b] para mostrar la forma de
+            // la curva completa. La región sombreada y el sólido siguen usando
+            // exclusivamente el intervalo indicado por el estudiante.
+            const span=model.b-model.a,boundaryScale=Math.max(1,...first.map(Math.abs),...second.map(Math.abs));
+            const sameBoundary=(u,v)=>Math.abs(u-v)<=boundaryScale*1e-7;
+            const contextStart=sameBoundary(first[0],second[0])?model.a:model.a-span;
+            const contextEnd=sameBoundary(first[first.length-1],second[second.length-1])?model.b:model.b+span;
+            const contextValues=range(contextStart,contextEnd,440);
+            const contextFirst=contextValues.map(t=>evaluate(model.f,model.vertical?{x:t}:{y:t}));
+            const contextSecond=contextValues.map(t=>evaluate(model.g,model.vertical?{x:t}:{y:t}));
+            const finiteContext=contextFirst.concat(contextSecond).filter(Number.isFinite);
             if(model.vertical){
-                traces.push({x:values,y:first,mode:'lines',line:{color:'#0057b8',width:3},name:'Frontera y=f(x)'});
-                traces.push({x:values,y:second,mode:'lines',line:{color:'#e06b16',width:3},name:'Frontera y=g(x)'});
+                traces.push({x:contextValues,y:contextFirst,mode:'lines',connectgaps:false,line:{color:'#0057b8',width:3},name:'Frontera y=f(x)'});
+                traces.push({x:contextValues,y:contextSecond,mode:'lines',connectgaps:false,line:{color:'#e06b16',width:3},name:'Frontera y=g(x)'});
                 traces.push({x:values.concat(values.slice().reverse()),y:first.concat(second.slice().reverse()),fill:'toself',fillcolor:'rgba(0,140,149,.20)',line:{color:'transparent'},hoverinfo:'skip',showlegend:false});
-                const all=first.concat(second),pad=Math.max((Math.max(...all)-Math.min(...all))*.12,.5);
+                const all=finiteContext.length?finiteContext:first.concat(second),pad=Math.max((Math.max(...all)-Math.min(...all))*.12,.5);
                 traces.push({x:[model.axisValue,model.axisValue],y:[Math.min(...all)-pad,Math.max(...all)+pad],mode:'lines',line:{color:'#7357b8',width:3,dash:'dash'},name:'Eje de rotación'});
             }else{
-                traces.push({x:first,y:values,mode:'lines',line:{color:'#0057b8',width:3},name:'Frontera x=f(y)'});
-                traces.push({x:second,y:values,mode:'lines',line:{color:'#e06b16',width:3},name:'Frontera x=g(y)'});
+                traces.push({x:contextFirst,y:contextValues,mode:'lines',connectgaps:false,line:{color:'#0057b8',width:3},name:'Frontera x=f(y)'});
+                traces.push({x:contextSecond,y:contextValues,mode:'lines',connectgaps:false,line:{color:'#e06b16',width:3},name:'Frontera x=g(y)'});
                 traces.push({x:first.concat(second.slice().reverse()),y:values.concat(values.slice().reverse()),fill:'toself',fillcolor:'rgba(0,140,149,.20)',line:{color:'transparent'},hoverinfo:'skip',showlegend:false});
-                const all=first.concat(second),pad=Math.max((Math.max(...all)-Math.min(...all))*.12,.5);
+                const all=finiteContext.length?finiteContext:first.concat(second),pad=Math.max((Math.max(...all)-Math.min(...all))*.12,.5);
                 traces.push({x:[Math.min(...all)-pad,Math.max(...all)+pad],y:[model.axisValue,model.axisValue],mode:'lines',line:{color:'#7357b8',width:3,dash:'dash'},name:'Eje de rotación'});
             }
             const mid=(model.a+model.b)/2,g=shellGeometry(model,mid),thickness=Math.max((model.b-model.a)*.018,.008);
@@ -405,20 +416,29 @@
             if(model.vertical)return{x:model.axisValue+(t-model.axisValue)*Math.cos(theta),y:value,z:(t-model.axisValue)*Math.sin(theta)};
             return{x:value,y:model.axisValue+(t-model.axisValue)*Math.cos(theta),z:(t-model.axisValue)*Math.sin(theta)};
         }
+        const surfaceSamples=120,fullTurnSamples=144;
+        const surfaceLighting={ambient:.62,diffuse:.9,specular:.32,roughness:.62,fresnel:.12};
+        const lightPosition={x:120,y:180,z:240};
+        function angularSamples(angle){return Math.max(12,Math.ceil(fullTurnSamples*angle/(2*Math.PI)));}
         function surfaceFor(model,which,angle){
-            const ts=range(model.a,model.b,64),thetas=angle>0?range(0,angle,64):[0],x=[],y=[],z=[];
+            const ts=range(model.a,model.b,surfaceSamples),thetas=angle>0?range(0,angle,angularSamples(angle)):[0],x=[],y=[],z=[];
             ts.forEach(t=>{const g=shellGeometry(model,t),value=which==='first'?g.first:g.second,points=thetas.map(theta=>pointOnRotation(model,t,value,theta));x.push(points.map(p=>p.x));y.push(points.map(p=>p.y));z.push(points.map(p=>p.z));});
-            return{type:'surface',x,y,z,colorscale:which==='first'?[[0,'#dbeafe'],[1,'#0057b8']]:[[0,'#ffedd5'],[1,'#e06b16']],opacity:(showShell.checked||showDimensions.checked)?.48:.88,showscale:false,hoverinfo:'skip'};
+            return{type:'surface',x,y,z,colorscale:which==='first'?[[0,'#dbeafe'],[1,'#0057b8']]:[[0,'#ffedd5'],[1,'#e06b16']],opacity:(showShell.checked||showDimensions.checked)?.42:.68,lighting:surfaceLighting,lightposition:lightPosition,showscale:false,hoverinfo:'skip'};
         }
-        function planarRegion(model){
-            const ts=range(model.a,model.b,64),x=[],y=[],z=[];
-            ts.forEach(t=>{const g=shellGeometry(model,t);if(model.vertical){x.push([t,t]);y.push([g.first,g.second]);}else{x.push([g.first,g.second]);y.push([t,t]);}z.push([0,0]);});
-            return{type:'surface',x,y,z,colorscale:[[0,'#bfe3e4'],[1,'#bfe3e4']],opacity:.58,showscale:false,hoverinfo:'skip'};
+        function regionFace(model,theta=0){
+            const ts=range(model.a,model.b,surfaceSamples),x=[],y=[],z=[];
+            ts.forEach(t=>{const g=shellGeometry(model,t),first=pointOnRotation(model,t,g.first,theta),second=pointOnRotation(model,t,g.second,theta);x.push([first.x,second.x]);y.push([first.y,second.y]);z.push([first.z,second.z]);});
+            return{type:'surface',x,y,z,colorscale:[[0,'#bfe3e4'],[1,'#bfe3e4']],opacity:.34,lighting:surfaceLighting,lightposition:lightPosition,showscale:false,hoverinfo:'skip'};
         }
-        function profile(model,which,color,name){const ts=range(model.a,model.b,64),vals=ts.map(t=>shellGeometry(model,t)[which]);return model.vertical?{type:'scatter3d',mode:'lines',x:ts,y:vals,z:ts.map(()=>0),line:{color,width:5},name,hoverinfo:'skip'}:{type:'scatter3d',mode:'lines',x:vals,y:ts,z:ts.map(()=>0),line:{color,width:5},name,hoverinfo:'skip'};}
+        function endpointClosure(model,t,angle){
+            const g=shellGeometry(model,t),values=range(g.bottom,g.top,48),thetas=range(0,angle,angularSamples(angle)),x=[],y=[],z=[];
+            values.forEach(value=>{const points=thetas.map(theta=>pointOnRotation(model,t,value,theta));x.push(points.map(point=>point.x));y.push(points.map(point=>point.y));z.push(points.map(point=>point.z));});
+            return{type:'surface',x,y,z,colorscale:[[0,'#a9d8da'],[1,'#008c95']],opacity:.46,lighting:surfaceLighting,lightposition:lightPosition,showscale:false,hoverinfo:'skip'};
+        }
+        function profile(model,which,color,name){const ts=range(model.a,model.b,surfaceSamples),vals=ts.map(t=>shellGeometry(model,t)[which]);return model.vertical?{type:'scatter3d',mode:'lines',x:ts,y:vals,z:ts.map(()=>0),line:{color,width:5},name,hoverinfo:'skip'}:{type:'scatter3d',mode:'lines',x:vals,y:ts,z:ts.map(()=>0),line:{color,width:5},name,hoverinfo:'skip'};}
         function representativeShell(model,angle){
             if(angle<=0)return[];
-            const mid=(model.a+model.b)/2,half=Math.max((model.b-model.a)*.025,.008),t1=mid-half,t2=mid+half,g=shellGeometry(model,mid),thetas=range(0,angle,64),gold=[[0,'#fff2b8'],[.55,'#d6a52a'],[1,'#8a6508']],traces=[];
+            const mid=(model.a+model.b)/2,half=Math.max((model.b-model.a)*.025,.008),t1=mid-half,t2=mid+half,g=shellGeometry(model,mid),thetas=range(0,angle,angularSamples(angle)),gold=[[0,'#fff2b8'],[.55,'#d6a52a'],[1,'#8a6508']],traces=[];
             function wall(t){const rows=[g.bottom,g.top].map(value=>thetas.map(theta=>pointOnRotation(model,t,value,theta)));return{type:'surface',x:rows.map(row=>row.map(p=>p.x)),y:rows.map(row=>row.map(p=>p.y)),z:rows.map(row=>row.map(p=>p.z)),colorscale:gold,opacity:.96,showscale:false,hoverinfo:'skip'};}
             function cap(value){const rows=[t1,t2].map(t=>thetas.map(theta=>pointOnRotation(model,t,value,theta)));return{type:'surface',x:rows.map(row=>row.map(p=>p.x)),y:rows.map(row=>row.map(p=>p.y)),z:rows.map(row=>row.map(p=>p.z)),colorscale:gold,opacity:.96,showscale:false,hoverinfo:'skip'};}
             traces.push(wall(t1),wall(t2),cap(g.bottom),cap(g.top));return traces;
@@ -428,10 +448,18 @@
             return[{type:'scatter3d',mode:'lines+markers+text',x:[center.x,radial.x],y:[center.y,radial.y],z:[center.z,radial.z],text:['','ρ'],textposition:'top center',line:{color:'#12324a',width:10},marker:{size:[4,7],color:'#12324a'},hoverinfo:'name',name:'Radio promedio ρ'},{type:'scatter3d',mode:'lines+markers+text',x:[radial.x,top.x],y:[radial.y,top.y],z:[radial.z,top.z],text:['','h'],textposition:'top center',line:{color:'#008c95',width:9},marker:{size:[4,7],color:'#008c95'},hoverinfo:'name',name:'Altura h'}];
         }
         function draw3D(model,degrees){
-            const angle=degrees*Math.PI/180,data=[planarRegion(model)];if(degrees>0)data.push(surfaceFor(model,'first',angle),surfaceFor(model,'second',angle));if(showShell.checked)data.push(...representativeShell(model,angle));data.push(...dimensionTraces(model,angle),profile(model,'first','#0057b8',fLabel.textContent),profile(model,'second','#e06b16',gLabel.textContent));
-            const vals=range(model.a,model.b,80).flatMap(t=>{const g=shellGeometry(model,t);return[g.first,g.second];}),low=Math.min(...vals),high=Math.max(...vals),axisTrace={type:'scatter3d',mode:'lines',line:{color:'#7357b8',width:6},hoverinfo:'skip',name:'Eje de rotación'};
+            const angle=degrees*Math.PI/180,data=[regionFace(model)];
+            if(degrees>0){
+                // Los cierres se dibujan primero para que no oculten los colores
+                // azul y naranja que identifican las dos fronteras.
+                data.push(endpointClosure(model,model.a,angle),endpointClosure(model,model.b,angle));
+                if(degrees<360)data.push(regionFace(model,angle));
+                data.push(surfaceFor(model,'first',angle),surfaceFor(model,'second',angle));
+            }
+            if(showShell.checked)data.push(...representativeShell(model,angle));data.push(...dimensionTraces(model,angle),profile(model,'first','#0057b8',fLabel.textContent),profile(model,'second','#e06b16',gLabel.textContent));
+            const vals=range(model.a,model.b,surfaceSamples).flatMap(t=>{const g=shellGeometry(model,t);return[g.first,g.second];}),low=Math.min(...vals),high=Math.max(...vals),axisTrace={type:'scatter3d',mode:'lines',line:{color:'#7357b8',width:6},hoverinfo:'skip',name:'Eje de rotación'};
             if(model.vertical){axisTrace.x=[model.axisValue,model.axisValue];axisTrace.y=[low,high];axisTrace.z=[0,0];}else{axisTrace.x=[low,high];axisTrace.y=[model.axisValue,model.axisValue];axisTrace.z=[0,0];}data.push(axisTrace);
-            Plotly.react(plot3d,data,{showlegend:false,paper_bgcolor:'rgba(0,0,0,0)',margin:{t:0,r:0,b:0,l:0},scene:{aspectmode:'data',bgcolor:'#fbfdfe',camera:{eye:degrees===0?{x:0,y:0,z:2.5}:{x:1.35,y:1.35,z:1.55},up:{x:0,y:1,z:0},projection:{type:'orthographic'}},xaxis:{title:{text:'x'}},yaxis:{title:{text:'y'}},zaxis:{title:{text:'z'}}}},{responsive:true,displaylogo:false});
+            Plotly.react(plot3d,data,{showlegend:false,paper_bgcolor:'rgba(0,0,0,0)',margin:{t:0,r:0,b:0,l:0},scene:{aspectmode:'data',bgcolor:'#fbfdfe',camera:{eye:degrees===0?{x:0,y:0,z:2.5}:{x:1.35,y:1.35,z:1.55},up:{x:0,y:1,z:0},projection:{type:'orthographic'}},xaxis:{title:{text:'x'}},yaxis:{title:{text:'y'}},zaxis:{title:{text:'z'}}}},{responsive:true,displaylogo:false,plotGlPixelRatio:Math.min(3,Math.max(2,window.devicePixelRatio||1))});
         }
         function calculate(model){let volume=0,n=2400,dt=(model.b-model.a)/n;for(let i=0;i<n;i++){const g=shellGeometry(model,model.a+(i+.5)*dt);volume+=2*Math.PI*g.radius*Math.max(0,g.height)*dt;}if(!Number.isFinite(volume))throw new Error('No fue posible calcular el volumen en el intervalo.');const variable=model.vertical?'x':'y';formulaDisplay.innerHTML=`\\(V=2\\pi\\int_a^b \\rho(${variable})h(${variable})\\,d${variable}\\)`;volumeDisplay.textContent=(Math.abs(volume)<1e-12?0:volume).toFixed(4)+' u³';globalThis.MathJax?.typesetPromise?.([formulaDisplay]).catch(console.error);}
         function redraw(){if(!currentModel)return;shellLegend.classList.toggle('hidden',!showShell.checked);radiusLegend.classList.toggle('hidden',!showDimensions.checked);heightLegend.classList.toggle('hidden',!showDimensions.checked);draw2D(currentModel);draw3D(currentModel,+rotationAngle.value);}
