@@ -105,9 +105,27 @@
         .legend-row span.hidden { display:none; }
         .legend-dot { width:.7rem; height:.7rem; border-radius:3px; }
         .legend-f { background:var(--dma-strong-blue); }.legend-g { background:var(--dma-orange); }.legend-region { background:var(--dma-turquoise); }.legend-axis { background:var(--dma-violet); }.legend-section { background:var(--dma-gold); }.legend-radius { background:var(--dma-navy); }.legend-radius-r { background:var(--dma-turquoise); }
+        .method-illustration { margin-bottom:1.5rem; padding:1rem 1.15rem; display:grid; grid-template-columns:minmax(190px,.72fr) minmax(300px,1.28fr); gap:1rem; align-items:center; }
+        .illustration-copy h2 { margin:0; color:var(--dma-navy); font-size:1.05rem; }
+        .illustration-copy p { margin:.35rem 0 .8rem; color:var(--dma-muted); font-size:.82rem; line-height:1.48; }
+        .illustration-toggle { padding:.42rem .72rem; border:1px solid #c8a74e; border-radius:8px; background:#fffaf0; color:#76570a; font-size:.78rem; font-weight:750; }
+        .illustration-stage { min-height:190px; display:flex; align-items:center; justify-content:center; overflow:hidden; border:1px solid var(--dma-border); border-radius:11px; background:#fff; }
+        .method-animation-frame { display:block; width:100%; height:330px; border:0; background:#fff; }
+        .shell-animation { width:100%; }
+        .shell-animation svg { display:block; width:100%; height:220px; }
+        .shell-surface { animation:shell-form 5.2s ease-in-out infinite; }
+        .shell-generator { animation:generator-pulse 5.2s ease-in-out infinite; }
+        .shell-slice { transform-box:fill-box; transform-origin:center; animation:shell-travel 5.2s ease-in-out infinite; }
+        .shell-arrow { animation:arrow-pulse 4.2s ease-in-out infinite; }
+        .method-illustration.is-paused .shell-surface,.method-illustration.is-paused .shell-generator,.method-illustration.is-paused .shell-slice,.method-illustration.is-paused .shell-arrow { animation-play-state:paused; }
+        @keyframes shell-form { 0%,12%{opacity:.12} 50%,88%{opacity:.86} 100%{opacity:.12} }
+        @keyframes shell-travel { 0%,10%{transform:translateX(-150px);opacity:.2} 24%{opacity:1} 70%,86%{transform:translateX(92px);opacity:1} 100%{transform:translateX(-150px);opacity:.2} }
+        @keyframes generator-pulse { 0%,100%{opacity:1;filter:drop-shadow(0 0 0 rgba(214,165,42,0))} 48%,75%{opacity:.9;filter:drop-shadow(0 0 7px rgba(214,165,42,.7))} }
+        @keyframes arrow-pulse { 0%,15%,100%{opacity:.2;stroke-dashoffset:42} 45%,78%{opacity:1;stroke-dashoffset:0} }
         mjx-container[jax="SVG"]:not([display="true"]){display:inline-block !important;margin:0 .08em !important}
         mjx-container[jax="SVG"]:not([display="true"]) svg{display:inline !important;vertical-align:middle}
-        @media (max-width:640px) { .plot-container { height:380px; } body > .container{padding:22px 12px !important}.dma-header{margin-bottom:1.25rem !important}.method-options{grid-template-columns:1fr} }
+        @media (prefers-reduced-motion:reduce) { .shell-surface,.shell-generator,.shell-slice,.shell-arrow{animation:none} }
+        @media (max-width:640px) { .plot-container { height:380px; } body > .container{padding:22px 12px !important}.dma-header{margin-bottom:1.25rem !important}.method-options{grid-template-columns:1fr}.method-illustration{grid-template-columns:1fr}.method-animation-frame{height:230px} }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -116,8 +134,45 @@
         <header class="dma-header mb-8">
             <p class="dma-kicker">Universidad Galileo · Departamento de Matemática Aplicada</p>
             <h1 class="text-4xl font-bold text-gray-900">Sólidos de revolución: envolventes cilíndricas</h1>
-            <p class="text-base text-gray-600 mt-2 max-w-3xl">Define una región plana, selecciona el eje de rotación y observa cómo un rectángulo paralelo al eje genera una envolvente cilíndrica. El volumen se aproxima mediante \(V=2\pi\int_a^b \rho(t)h(t)\,dt\), donde \(\rho(t)\) es el radio promedio y \(h(t)\) es la altura.</p>
+            <p class="text-base text-gray-600 mt-2 max-w-3xl">Define una región plana y selecciona el eje de rotación. En el método de envolventes cilíndricas, un rectángulo paralelo al eje, de altura \(h(t)\), gira y genera una capa cilíndrica delgada de radio \(\rho(t)\). El volumen se aproxima mediante \(V=2\pi\int_a^b \rho(t)h(t)\,dt\).</p>
         </header>
+
+        <section id="shell-method-illustration" class="method-illustration bg-white" aria-labelledby="illustration-title">
+            <div class="illustration-copy">
+                <h2 id="illustration-title">Ilustración del método de envolventes cilíndricas</h2>
+                <button type="button" id="illustration-toggle" class="illustration-toggle" aria-pressed="false">Pausar ilustración</button>
+            </div>
+            <div class="illustration-stage">
+                <iframe id="shell-method-animation" class="method-animation-frame" src="Vista_Previa_Animacion_Envolventes.html?v=20261021a&amp;embedded=1" title="Animación de la construcción de un sólido de revolución mediante envolventes cilíndricas" loading="eager"></iframe>
+                <div class="shell-animation hidden" aria-hidden="true">
+                    <svg viewBox="0 0 760 280" aria-hidden="true">
+                        <defs>
+                            <linearGradient id="shellGradient" x1="0" x2="1"><stop offset="0" stop-color="#f5d978"/><stop offset=".58" stop-color="#e8a33b"/><stop offset="1" stop-color="#cf5c37"/></linearGradient>
+                            <linearGradient id="shellSliceGradient" x1="0" x2="1"><stop offset="0" stop-color="#fff0a8" stop-opacity=".35"/><stop offset=".5" stop-color="#d6a52a" stop-opacity=".78"/><stop offset="1" stop-color="#ad7310" stop-opacity=".45"/></linearGradient>
+                            <marker id="shellArrowhead" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto"><polygon points="0 0, 8 3.5, 0 7" fill="#12324a"/></marker>
+                        </defs>
+                        <line x1="170" y1="26" x2="170" y2="250" stroke="#7656b5" stroke-width="5" stroke-dasharray="10 8"/>
+                        <text x="170" y="18" text-anchor="middle" fill="#604595" font-size="16" font-weight="700">eje de rotación</text>
+                        <path d="M170 221 L284 221 C280 168 269 113 236 67 C218 42 194 36 170 42 Z" fill="url(#shellGradient)" fill-opacity=".46" stroke="#a34f2f" stroke-width="2.5"/>
+                        <text x="214" y="255" text-anchor="middle" fill="#526b7d" font-size="15">región plana</text>
+                        <g class="shell-surface">
+                            <path d="M372 220 C381 168 407 112 445 67 C467 41 505 33 534 47 C573 66 594 129 610 220 Z" fill="url(#shellGradient)" stroke="#a34f2f" stroke-width="3"/>
+                            <ellipse cx="491" cy="220" rx="119" ry="26" fill="#d87943" fill-opacity=".66" stroke="#a34f2f" stroke-width="3"/>
+                            <ellipse cx="490" cy="57" rx="38" ry="13" fill="#f6d777" fill-opacity=".9" stroke="#a34f2f" stroke-width="2.5"/>
+                        </g>
+                        <g class="shell-slice">
+                            <path d="M438 92 C438 80 466 80 466 92 L466 220 C466 232 438 232 438 220 Z" fill="url(#shellSliceGradient)" stroke="#76570a" stroke-width="3"/>
+                            <ellipse cx="452" cy="92" rx="14" ry="5" fill="#fff0a8" stroke="#76570a" stroke-width="2"/>
+                            <ellipse cx="452" cy="220" rx="14" ry="5" fill="#d6a52a" fill-opacity=".55" stroke="#76570a" stroke-width="2"/>
+                            <line x1="452" y1="92" x2="452" y2="220" stroke="#12324a" stroke-width="2"/>
+                            <text x="462" y="158" fill="#12324a" font-size="18" font-style="italic">h</text>
+                        </g>
+                        <g class="shell-generator"><line x1="170" y1="220" x2="452" y2="220" stroke="#12324a" stroke-width="3" marker-end="url(#shellArrowhead)"/><text x="304" y="209" text-anchor="middle" fill="#12324a" font-size="20" font-style="italic">ρ</text></g>
+                        <path class="shell-arrow" d="M286 52 C326 21 361 26 389 49" fill="none" stroke="#0b6380" stroke-width="5" stroke-linecap="round" stroke-dasharray="42 10" marker-end="url(#shellArrowhead)"/>
+                    </svg>
+                </div>
+            </div>
+        </section>
 
         <!-- Panel de Controles -->
         <div class="bg-white p-6 rounded-2xl shadow-lg mb-8">
@@ -289,10 +344,14 @@
         const shellLegend=document.getElementById('section-legend-item');
         const radiusLegend=document.getElementById('radius-legend-item');
         const heightLegend=document.getElementById('radius-r-legend-item');
+        const illustrationToggle=document.getElementById('illustration-toggle');
+        const shellMethodIllustration=document.getElementById('shell-method-illustration');
+        const shellMethodAnimation=document.getElementById('shell-method-animation');
         let activeMathInput=fInput;
         let editorReady=false;
         let currentModel=null;
         let rotationFrame=null;
+        let illustrationPaused=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         const allowedSymbols=new Set(['x','y','pi','e','sin','cos','tan','asin','acos','atan','sinh','cosh','tanh','sqrt','nthRoot','abs','exp','log','ln','min','max']);
 
         function parseSafeExpression(source){
@@ -469,10 +528,13 @@
             setTimeout(()=>{try{const axis=axisSelect.value,vertical=verticalAxis(axis),a=numericExpression(fieldExpression(aInput)),b=numericExpression(fieldExpression(bInput)),k=axis==='y=k'?Number(kInput.value):0,h=axis==='x=h'?Number(hInput.value):0;const model={f:parseSafeExpression(fieldExpression(fInput)).compile(),g:parseSafeExpression(fieldExpression(gInput)).compile(),a,b,axis,k,h,vertical,axisValue:axisValue(axis,k,h)};validateModel(model);currentModel=model;rotationAngle.value='0';rotationValue.textContent='0';draw2D(model);draw3D(model,0);calculate(model);shellLegend.classList.toggle('hidden',!showShell.checked);radiusLegend.classList.toggle('hidden',!showDimensions.checked);heightLegend.classList.toggle('hidden',!showDimensions.checked);generateButton.disabled=false;generateButtonText.textContent='Actualizar visualización';}catch(error){showError(error.message||'La expresión no pudo interpretarse. Revisa que todas las casillas estén completas.');}},50);
         }
 
+        function updateIllustrationPlayback(){illustrationToggle.textContent=illustrationPaused?'Reproducir ilustración':'Pausar ilustración';illustrationToggle.setAttribute('aria-pressed',String(illustrationPaused));shellMethodIllustration.classList.toggle('is-paused',illustrationPaused);shellMethodAnimation.contentWindow?.postMessage({type:'shell-animation-control',paused:illustrationPaused},'*');}
+        illustrationToggle.addEventListener('click',()=>{illustrationPaused=!illustrationPaused;updateIllustrationPlayback();});
+        shellMethodAnimation.addEventListener('load',updateIllustrationPlayback);
         axisSelect.addEventListener('change',updateAxisUI);generateButton.addEventListener('click',generate);[showShell,showDimensions].forEach(input=>input.addEventListener('change',redraw));rotationAngle.addEventListener('input',()=>{rotationValue.textContent=rotationAngle.value;if(!currentModel)return;if(rotationFrame)cancelAnimationFrame(rotationFrame);rotationFrame=requestAnimationFrame(()=>{draw3D(currentModel,+rotationAngle.value);rotationFrame=null;});});
         [fInput,gInput,aInput,bInput].forEach(input=>input.addEventListener('focusin',()=>setActiveInput(input)));document.querySelectorAll('.math-key').forEach(button=>button.addEventListener('click',()=>{if(!button.disabled)insertTemplate(button.dataset.template);}));[fInput,gInput,aInput,bInput,kInput,hInput].forEach(input=>input.addEventListener('keydown',event=>{if(event.key==='Enter')generate();}));
         resetButton.addEventListener('click',()=>{[fInput,aInput,bInput].forEach(input=>input.setValue(''));gInput.setValue('0');axisSelect.value='y';kInput.value='-1';hInput.value='-1';showShell.checked=false;showDimensions.checked=false;currentModel=null;errorBox.classList.remove('show');visuals.classList.add('hidden');generateButtonText.textContent='Visualizar sólido';updateAxisUI();setActiveInput(fInput);});
-        updateAxisUI();setActiveInput(fInput);generateButton.disabled=true;generateButtonText.textContent='Cargando editor matemático...';customElements.whenDefined('math-field').then(()=>{editorReady=true;[fInput,gInput,aInput,bInput].forEach(input=>{input.smartFence=true;input.smartMode=false;});generateButton.disabled=false;generateButtonText.textContent='Visualizar sólido';});setTimeout(()=>{if(!editorReady){showError('No fue posible cargar el editor matemático. Comprueba la conexión a Internet y vuelve a cargar la página.');generateButton.disabled=true;generateButtonText.textContent='Editor no disponible';}},10000);
+        updateIllustrationPlayback();updateAxisUI();setActiveInput(fInput);generateButton.disabled=true;generateButtonText.textContent='Cargando editor matemático...';customElements.whenDefined('math-field').then(()=>{editorReady=true;[fInput,gInput,aInput,bInput].forEach(input=>{input.smartFence=true;input.smartMode=false;});generateButton.disabled=false;generateButtonText.textContent='Visualizar sólido';});setTimeout(()=>{if(!editorReady){showError('No fue posible cargar el editor matemático. Comprueba la conexión a Internet y vuelve a cargar la página.');generateButton.disabled=true;generateButtonText.textContent='Editor no disponible';}},10000);
     </script>
 </body>
 </html>
